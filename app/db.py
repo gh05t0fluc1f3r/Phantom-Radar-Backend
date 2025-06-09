@@ -1,25 +1,17 @@
-import requests
+from pymongo import MongoClient
 
-def fetch_cve_details():
-    url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-    params = {"resultsPerPage": 10}
-    headers = {"apiKey": "YOUR_API_KEY_HERE"}
+class DBClient:
+    def __init__(self):
+        self.client = MongoClient("mongodb://localhost:27017")
+        self.db = self.client.phantom_radar
 
-    response = requests.get(url, headers=headers, params=params)
-    results = []
-    if response.status_code == 200:
-        for item in response.json().get("vulnerabilities", []):
-            cve = item.get("cve")
-            results.append({
-                "cve_id": cve.get("id"),
-                "description": cve.get("descriptions")[0].get("value"),
-                "published": cve.get("published"),
-                "modified": cve.get("lastModified"),
-                "cvss_score": cve.get("metrics", {}).get("cvssMetricV31", [{}])[0].get("cvssData", {}).get("baseScore"),
-                "cvss_severity": cve.get("metrics", {}).get("cvssMetricV31", [{}])[0].get("cvssData", {}).get("baseSeverity"),
-                "cpe": cve.get("configurations", {}).get("nodes", [{}])[0].get("cpeMatch", []),
-                "cwe": cve.get("weaknesses", [{}])[0].get("description", [{}])[0].get("value"),
-                "source": "nvd",
-                "kev": cve.get("isKev") or False
-            })
-    return results
+    def insert_many(self, collection: str, data: list):
+        self.db[collection].insert_many(data)
+
+    def search(self, collection: str, keyword: str, severity: str = None):
+        query = {"description": {"$regex": keyword, "$options": "i"}}
+        if severity:
+            query["cvss_severity"] = severity
+        return list(self.db[collection].find(query, {"_id": 0}))
+
+db_client = DBClient()
