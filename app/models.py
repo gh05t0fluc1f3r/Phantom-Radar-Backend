@@ -1,21 +1,14 @@
-from fastapi import APIRouter, WebSocket
-from typing import List
+from pydantic import BaseModel
+from typing import Optional
 
-router = APIRouter()
-
-clients: List[WebSocket] = []
-
-@router.websocket("/threats/live")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    clients.append(websocket)
-    try:
-        while True:
-            await websocket.receive_text()  # Ping loop
-    except:
-        clients.remove(websocket)
-
-async def broadcast_threat(data: dict):
-    for ws in clients:
-        await ws.send_json(data)
-
+class ThreatModel(BaseModel):
+    cve_id: str
+    description: str
+    published: str
+    modified: str
+    cvss_score: Optional[float]
+    cvss_severity: Optional[str]
+    cpe: Optional[list]
+    cwe: Optional[str]
+    source: str
+    kev: Optional[bool]
